@@ -1,7 +1,7 @@
 Flask>=2.0
 markdown-it-py>=2.0
 notion-client>=2.0
-notion-to-md>=0.1
+notion-to-md-py>=0.1
 python-dotenv>=0.15
 beautifulsoup4>=4.9
-sqlite3
+

@@ -12,9 +12,10 @@
       <ul>
         {% for it in items %}
           <li>
-            <a href="{{ url_for('view_item', item_id=it['title']) }}">#{{ it['id'] }}</a>
+            <a href="/get/{{  it['slug']  }}">#{{ it['id'] }}</a>
             - {{ it['title'] }}
             <small>({{ it['date'] }})</small>
+
           </li>
         {% endfor %}
       </ul>

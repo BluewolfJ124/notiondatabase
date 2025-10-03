@@ -4,27 +4,31 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Submit</title>
+    <!-- add external stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='form.css') }}">
   </head>
-  <body>
-    <h1>Submit a parameter</h1>
+  <body class="page">
+    <h1 class="page-title">Upload a page</h1>
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <ul>
+        <ul class="messages">
           {% for msg in messages %}
-            <li>{{ msg }}</li>
+            <li class="message-item">{{ msg }}</li>
           {% endfor %}
         </ul>
       {% endif %}
     {% endwith %}
-
-    <form action="{{ url_for('submit') }}" method="post">
-      <label for="param">Page ID:</label>
-      <input id="param" name="param" required />
-      <label for="indexed">Indexed:</label>
-    <input id="indexed" name="indexed" type="checkbox" />
-    <label for="author">Author:</label>
-    <input id="author" name="author" type="text" />
-      <button type="submit">Submit</button>
+    <br>
+    <form action="{{ url_for('submit') }}" method="post" class="submit-form">
+      <label for="param" class="form-label">Page ID:</label>
+      <input id="param" name="param" required class="form-input" />
+      <label for="author" class="form-label">Author:</label>
+      <input id="author" name="author" type="text" class="form-input" />
+      <label for="subject" class="form-label">Subject:</label>
+      <input id="subject" name="subject" type="text" class="form-input" />
+      <label for="indexed" class="form-label">Indexed:</label>
+      <input id="indexed" name="indexed" type="checkbox" checked class="form-checkbox" />
+      <button type="submit" class="submit-button">Submit</button>
     </form>
 
     <p><a href="{{ url_for('list_items') }}">View saved items</a></p>

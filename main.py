@@ -78,7 +78,7 @@ def create_app():
         os.makedirs(BASE_DIR, exist_ok=True)
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-        # Create table (if not exists) with slug column
+        # Create table (if not exists) with slug and subject columns
         cur.execute(
             """
         CREATE TABLE IF NOT EXISTS items (
@@ -88,18 +88,12 @@ def create_app():
             date TEXT NOT NULL,
             is_index BOOLEAN,
             author TEXT DEFAULT 'Jamie Z',
-            slug TEXT UNIQUE
+            slug TEXT UNIQUE,
+            subject TEXT DEFAULT ''
         )
         """
         )
         conn.commit()
-
-        # Ensure slug column exists (for older DBs) - add if missing
-        cur.execute("PRAGMA table_info(items)")
-        cols = [row[1] for row in cur.fetchall()]  # (cid, name, type, ...)
-        if "slug" not in cols:
-            cur.execute("ALTER TABLE items ADD COLUMN slug TEXT")
-            conn.commit()
 
         # Populate missing slugs for existing rows
         cur.execute("SELECT id, title, slug FROM items WHERE slug IS NULL OR slug = ''")
@@ -123,6 +117,7 @@ def create_app():
         page_id = request.form.get("param", "")
         indexed = request.form.get("index", "")
         author = request.form.get("author", "")
+        subject = request.form.get("subject", "")  # <-- new field
         if author == "":
             author = "Jamie Z"
         if not page_id:
@@ -166,8 +161,8 @@ def create_app():
         slug = generate_unique_slug(db, base_slug)
 
         cur.execute(
-            "INSERT INTO items (title, content, date, is_index, author, slug) VALUES (?, ?, ?, ?, ?, ?)",
-            (title, html_output, created_time, indexed, author, slug),
+            "INSERT INTO items (title, content, date, is_index, author, slug, subject) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (title, html_output, created_time, indexed, author, slug, subject),
         )
         db.commit()
         item_id = cur.lastrowid
@@ -179,8 +174,8 @@ def create_app():
     def list_items():
         db = get_db()
         cur = db.cursor()
-        # include slug so templates can link by slug
-        cur.execute("SELECT id, title, content, slug FROM items ORDER BY date DESC")
+        # include subject so templates can display or filter by it
+        cur.execute("SELECT id, title, content, slug, subject FROM items ORDER BY date DESC")
         items = cur.fetchall()
         return render_template("list.html", items=items)
     
@@ -188,7 +183,55 @@ def create_app():
     def fetch_pages():
         db = get_db()
         cur = db.cursor()
-        cur.execute("SELECT title FROM items ORDER BY date DESC")
+
+        # Read query params
+        subject = request.args.get("subject")
+        start = request.args.get("start")  # inclusive start date (ISO string preferred)
+        end = request.args.get("end")      # inclusive end date (ISO string preferred)
+        order_by = request.args.get("order_by", "date").lower()
+        order = request.args.get("order", "desc").lower()
+        limit = request.args.get("limit")
+        offset = request.args.get("offset")
+
+        # Whitelist columns to avoid SQL injection via order_by
+        allowed_order_cols = {"date", "title", "subject"}
+        if order_by not in allowed_order_cols:
+            order_by = "date"
+
+        # Normalize order direction
+        order_dir = "ASC" if order == "asc" else "DESC"
+
+        # Build base query and parameters list
+        sql = "SELECT title, slug, date, subject FROM items"
+        where_clauses = []
+        params = []
+
+        if subject:
+            where_clauses.append("subject = ?")
+            params.append(subject)
+
+        # Compare date strings lexicographically (ISO8601 is safe for this)
+        if start:
+            where_clauses.append("date >= ?")
+            params.append(start)
+        if end:
+            where_clauses.append("date <= ?")
+            params.append(end)
+
+        if where_clauses:
+            sql += " WHERE " + " AND ".join(where_clauses)
+
+        sql += f" ORDER BY {order_by} {order_dir}"
+
+        # Optional limit/offset (only accept integers)
+        if limit and limit.isdigit():
+            sql += " LIMIT ?"
+            params.append(int(limit))
+            if offset and offset.isdigit():
+                sql += " OFFSET ?"
+                params.append(int(offset))
+
+        cur.execute(sql, params)
         items = cur.fetchall()
         return json.dumps([dict(item) for item in items])
 
