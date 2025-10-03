@@ -183,6 +183,14 @@ def create_app():
         cur.execute("SELECT id, title, content, slug FROM items ORDER BY date DESC")
         items = cur.fetchall()
         return render_template("list.html", items=items)
+    
+    @app.route("/fetch_pages", methods=["GET"])
+    def fetch_pages():
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("SELECT title FROM items ORDER BY date DESC")
+        items = cur.fetchall()
+        return json.dumps([dict(item) for item in items])
 
     @app.route("/get/<slug>", methods=["GET"])
     def view_item(slug):
