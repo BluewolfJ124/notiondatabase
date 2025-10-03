@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Submit</title>
+  </head>
+  <body>
+    <h1>Submit a parameter</h1>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+          {% for msg in messages %}
+            <li>{{ msg }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <form action="{{ url_for('submit') }}" method="post">
+      <label for="param">Page ID:</label>
+      <input id="param" name="param" required />
+      <label for="indexed">Indexed:</label>
+    <input id="indexed" name="indexed" type="checkbox" />
+    <label for="author">Author:</label>
+    <input id="author" name="author" type="text" />
+      <button type="submit">Submit</button>
+    </form>
+
+    <p><a href="{{ url_for('list_items') }}">View saved items</a></p>
+  </body>
+</html>
