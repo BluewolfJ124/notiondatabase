@@ -6,6 +6,7 @@
     <title>Submit</title>
     <!-- add external stylesheet -->
     <link rel="stylesheet" href="{{ url_for('static', filename='form.css') }}">
+
   </head>
   <body class="page">
     <h1 class="page-title">Upload a page</h1>
@@ -25,7 +26,19 @@
       <label for="author" class="form-label">Author:</label>
       <input id="author" name="author" type="text" class="form-input" />
       <label for="subject" class="form-label">Subject:</label>
-      <input id="subject" name="subject" type="text" class="form-input" />
+      <div class="select-wrapper">
+        <select name="subject" id="subject" class="form-select">
+          <option value="">None</option>
+          <option value="english">English</option>
+          <option value="math">Math</option>
+          <option value="digital-solutions">Digital Solutions</option>
+          <option value="physics">Phyiscs</option>
+          <option value="chemistry">Chemistry</option>
+          <option value="biology">Biology</option>
+          <option value="engineering">Engineering</option>
+          <option value="buisness">Buisness</option>
+        </select>
+      </div>
       <label for="indexed" class="form-label">Indexed:</label>
       <input id="indexed" name="indexed" type="checkbox" checked class="form-checkbox" />
       <button type="submit" class="submit-button">Submit</button>

@@ -4,4 +4,4 @@ notion-client>=2.0
 notion-to-md-py>=0.1
 python-dotenv>=0.15
 beautifulsoup4>=4.9
-
+gunicorn>=20.0
