@@ -16,8 +16,15 @@ COPY . /app
 
 # Creates a non-root user with an explicit UID and adds permission to access the /app folder
 # For more info, please refer to https://aka.ms/vscode-docker-python-configure-containers
-RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /app
+RUN adduser -u 5678 --disabled-password --gecos "" appuser \
+    && chown -R appuser /app \
+    && mkdir -p /data \
+    && chown -R appuser /data
+
+# Declare a mount point for persistent sqlite database
+VOLUME ["/data"]
+
 USER appuser
-ENV FLASK_ENV=production FLASK_DEBUG=0
+ENV FLASK_ENV=production FLASK_DEBUG=0 FLASK_SQLITE_PATH=/data/db.sqlite3
 # During debugging, this entry point will be overridden. For more information, please refer to https://aka.ms/vscode-docker-python-debug
 CMD ["gunicorn", "-w", "4", "-b", "127.0.0.1:5000", "main:app"]

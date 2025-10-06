@@ -27,7 +27,9 @@ load_dotenv() # Loads variables from .env file
 notion_key = os.getenv("NOTION_KEY")
 flask_key = os.getenv("FLASK_KEY")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "data.db")
+# Use env var if provided (e.g. FLASK_SQLITE_PATH=/data/db.sqlite3), otherwise default to project file
+DB_PATH = os.getenv("FLASK_SQLITE_PATH", os.path.join(BASE_DIR, "data.db"))
+DB_DIR = os.path.dirname(DB_PATH)
 
 
 def create_app():
@@ -75,8 +77,9 @@ def create_app():
             db.close()
 
     def init_db():
-        os.makedirs(BASE_DIR, exist_ok=True)
-        conn = sqlite3.connect(DB_PATH)
+        # Ensure the directory for the DB file exists (useful when mounted as a volume at /data)
+        os.makedirs(DB_DIR or BASE_DIR, exist_ok=True)
+        conn = sqlite3.connect(DB_PATH, detect_types=sqlite3.PARSE_DECLTYPES)
         cur = conn.cursor()
         # Create table (if not exists) with slug and subject columns
         cur.execute(
