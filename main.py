@@ -179,7 +179,7 @@ def create_app():
         items = cur.fetchall()
         return render_template("list.html", items=items)
     
-    @app.route("/fetch_pages", methods=["GET"])
+    @app.route("/get", methods=["GET"])
     def fetch_pages():
         db = get_db()
         cur = db.cursor()
@@ -332,5 +332,7 @@ app = create_app()
 
 if __name__ == "__main__":
     # initialize DB and run development server
+    
     app.init_db()
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=debug, use_reloader=False)
