@@ -1,9 +1,9 @@
-import os
-import sqlite3
+import os, requests
+from urllib.parse import urlparse
+import sqlite3, hashlib
 import json
 from datetime import datetime
 from dotenv import load_dotenv
-import os
 import re
 from markdown_it import MarkdownIt
 from notion_client import Client
@@ -21,15 +21,18 @@ from flask import (
     url_for,
     abort,
     flash,
+    send_from_directory,
 )
 
 load_dotenv() # Loads variables from .env file
 notion_key = os.getenv("NOTION_KEY")
 flask_key = os.getenv("FLASK_KEY")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_URL = os.getenv("BASE_URL", "http://localhost:5000") 
 # Use env var if provided (e.g. FLASK_SQLITE_PATH=/data/db.sqlite3), otherwise default to project file
 DB_PATH = os.getenv("FLASK_SQLITE_PATH", os.path.join(BASE_DIR, "data.db"))
 DB_DIR = os.path.dirname(DB_PATH)
+download_dir = os.path.dirname(DB_PATH)
 
 
 def create_app():
@@ -134,7 +137,6 @@ def create_app():
             # Get created time
             created_time = page.get("created_time", "No creation date found")
             title = page["properties"]["title"]["title"][0]["text"]["content"]
-            print(title)
 
         except Exception as e:
             print(f"An error occurred: {e}")
@@ -145,13 +147,12 @@ def create_app():
 
 
         n2m = NotionToMarkdown(notion)
-
         # Export a page as a markdown blocks
         md_blocks = n2m.page_to_markdown(page_id)
 
         # Convert markdown blocks to string
         md_str = n2m.to_markdown_string(md_blocks).get('parent')
-        md = MarkdownIt()
+        md = MarkdownIt("commonmark").enable('table')
         html_output = md.render(md_str)
         html_output = parse_html(html_output, title, author, created_time)
 
@@ -183,7 +184,7 @@ def create_app():
         return render_template("list.html", items=items)
     
     @app.route("/get", methods=["GET"])
-    def fetch_pages():
+    def fetch_pages(): 
         db = get_db()
         cur = db.cursor()
 
@@ -206,7 +207,7 @@ def create_app():
 
         # Build base query and parameters list
         sql = "SELECT title, slug, date, subject FROM items"
-        where_clauses = []
+        where_clauses = ["is_index = 1"]  # only indexed items
         params = []
 
         if subject:
@@ -237,7 +238,9 @@ def create_app():
         cur.execute(sql, params)
         items = cur.fetchall()
         return json.dumps([dict(item) for item in items])
-
+    @app.route('/images/<path:filename>')
+    def serve_image(filename):
+        return send_from_directory(download_dir, filename)
     @app.route("/get/<slug>", methods=["GET"])
     def view_item(slug):
         db = get_db()
@@ -257,20 +260,16 @@ def create_app():
     init_db()
 
     return app
+
 def parse_html(html_content: str, title, author, created_time) -> str:
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html_content, "html.parser")
-
-    # Tags we should NOT touch (code blocks, scripts, styles, etc.)
     skip_tags = {"code", "pre", "script", "style", "math", "svg", "textarea"}
-
-    # Iterate over text nodes and replace math delimiters with LaTeX delimiters
     for text_node in soup.find_all(string=True):
         parent_name = text_node.parent.name if text_node.parent else None
         if parent_name in skip_tags:
             continue
-
         text = str(text_node)
         # Prefer handling display math ($$...$$) first
         if "$$" in text:
@@ -284,7 +283,6 @@ def parse_html(html_content: str, title, author, created_time) -> str:
                     new_frag += part
             replacement = BeautifulSoup(new_frag, "html.parser")
             text_node.replace_with(replacement)
-
         # Then inline math ($...$)
         elif "$" in text:
             parts = text.split("$")
@@ -296,6 +294,28 @@ def parse_html(html_content: str, title, author, created_time) -> str:
                     new_frag += part
             replacement = BeautifulSoup(new_frag, "html.parser")
             text_node.replace_with(replacement)
+        img_tags = soup.find_all("img")
+    
+    for img in img_tags:
+        # Get the image source URL
+        img_url = img.get("src")
+        if not img_url:
+            continue  # skip tags without src
+        try:
+            # Download image
+            response = requests.get(img_url, stream=True, timeout=10)
+            response.raise_for_status()
+            file_hash = hashlib.sha256(response.content).hexdigest()
+            ext = os.path.splitext(urlparse(img_url).path)[1] or ".jpg"
+            filename = f"{file_hash[:16]}{ext}"  # shorter hash for readability
+            filepath = os.path.join(download_dir, filename)
+            # Write image to file
+            with open(filepath, "wb") as f:
+                f.write(response.content)
+            img["src"] = f"{BASE_URL}/images/{filename}"
+        except Exception as e:
+            print(f"Failed to download image {img_url}: {e}")
+            continue  # skip this image on failure
 
     # Build title and author/date tags
     title_tag = soup.new_tag("h1")
@@ -313,23 +333,10 @@ def parse_html(html_content: str, title, author, created_time) -> str:
         date_str = str(created_time)
     author_tag.string = f"{author} {date_str}"
 
-    # Add MathJax script (v3) with id and async
-    mathjax_script = soup.new_tag(
-        "script",
-        id="MathJax-script",
-        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js",
-    )
-    # ensure async attribute present
-    mathjax_script.attrs["async"] = "async"
-
-    # Prepend script, title, and author so they appear before content
-    soup.insert(0, mathjax_script)
     soup.insert(0, author_tag)
     soup.insert(0, title_tag)
 
     return str(soup)
-    
-    
     
 app = create_app()
 
