@@ -182,6 +182,14 @@ def create_app():
         cur.execute("SELECT id, title, content, slug, subject FROM items ORDER BY date DESC")
         items = cur.fetchall()
         return render_template("list.html", items=items)
+    @app.route("/delete/<int:item_id>", methods=["GET"])
+    def delete_item(item_id):
+        db = get_db()
+        cur = db.cursor()
+        cur.execute("DELETE FROM items WHERE id = ?", (item_id,))
+        db.commit()
+        flash(f"Item {item_id} deleted.")
+        return redirect(url_for("list_items"))
     
     @app.route("/get", methods=["GET"])
     def fetch_pages(): 

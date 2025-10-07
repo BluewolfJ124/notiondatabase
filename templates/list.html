@@ -15,7 +15,7 @@
             <a href="/get/{{  it['slug']  }}">#{{ it['id'] }}</a>
             - {{ it['title'] }}
             <small>({{ it['date'] }})</small>
-
+            <a href="/delete/{{ it['id'] }}"">[Delete]</a>
           </li>
         {% endfor %}
       </ul>
