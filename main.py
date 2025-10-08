@@ -163,7 +163,10 @@ def create_app():
         # generate slug and ensure uniqueness
         base_slug = slugify(title)
         slug = generate_unique_slug(db, base_slug)
-
+        if "indexed" in request.form:
+            indexed = True
+        else:
+            indexed = False
         cur.execute(
             "INSERT INTO items (title, content, date, is_index, author, slug, subject) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (title, html_output, created_time, indexed, author, slug, subject),
@@ -215,7 +218,7 @@ def create_app():
 
         # Build base query and parameters list
         sql = "SELECT title, slug, date, subject FROM items"
-        where_clauses = ["is_index = 1"]  # only indexed items
+        where_clauses = ["is_index = TRUE"]  # only indexed items
         params = []
 
         if subject:
